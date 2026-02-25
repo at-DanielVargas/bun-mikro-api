@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationDir": "dist/types",
+    "outDir": "dist/esm",
+    "types": ["bun-types"]
+  },
+  "include": [
+    "src/migrate.ts",
+    "src/migrations/**/*",
+    "src/database/D1WranglerDriver.ts",
+    "src/database/DatabaseDriver.ts",
+    "src/database/SqliteDriver.ts",
+    "src/database/PostgresDriver.ts",
+    "src/schema/Migration.ts"
+  ],
+  "exclude": ["tests/**/*", "dist/**/*", "node_modules/**/*"]
+}

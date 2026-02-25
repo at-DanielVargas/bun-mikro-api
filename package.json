@@ -1,0 +1,56 @@
+{
+  "name": "mikro-api",
+  "version": "1.0.0",
+  "description": "Minimalist NestJS-style framework for Cloudflare Workers and Bun",
+  "author": "mikro-api",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./migrate": {
+      "import": "./dist/esm/migrate.js",
+      "require": "./dist/cjs/migrate.js",
+      "types": "./dist/types/migrate.d.ts"
+    }
+  },
+  "bin": {
+    "mikro-migrate": "./bin/mikro-migrate.ts"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build:esm": "bun build src/index.ts --outdir dist/esm --format esm --external 'bun:*' --external 'node:*'",
+    "build:cjs": "bun build src/index.ts --outdir dist/cjs --format cjs --external 'bun:*' --external 'node:*'",
+    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly --declarationDir dist/types",
+    "build:migrate:esm": "bun build src/migrate.ts --outdir dist/esm --format esm --external 'bun:*' --external 'node:*' --external 'postgres'",
+    "build:migrate:cjs": "bun build src/migrate.ts --outdir dist/cjs --format cjs --external 'bun:*' --external 'node:*' --external 'postgres'",
+    "build:migrate:types": "tsc -p tsconfig.migrate.json --emitDeclarationOnly --declarationDir dist/types",
+    "build:migrate": "bun run build:migrate:esm && bun run build:migrate:cjs && bun run build:migrate:types",
+    "build": "bun run build:esm && bun run build:cjs && bun run build:types && bun run build:migrate",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "migrate": "bun run bin/mikro-migrate.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240208.0",
+    "typescript": "^5.3.3",
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "@cloudflare/workers-types": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@cloudflare/workers-types": {
+      "optional": true
+    }
+  }
+}
