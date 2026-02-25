@@ -102,5 +102,11 @@ export { Migration }       from './schema/Migration';
 export { SwaggerGenerator } from './swagger/SwaggerGenerator';
 export type { SwaggerConfig } from './swagger/SwaggerGenerator';
 export { SwaggerUI }        from './swagger/SwaggerUI';
+export { SwaggerAuth }      from './swagger/SwaggerAuth';
+export type { SwaggerUser } from './swagger/SwaggerAuth';
+export { DocsPage }         from './swagger/DocsPage';
 export { DtoSchemaBuilder } from './swagger/DtoSchemaBuilder';
 export type { OpenApiSchema } from './swagger/DtoSchemaBuilder';
+
+// ── Documentation ─────────────────────────────────────────────────────
+export { LibraryDocsPage }  from './docs/LibraryDocsPage';

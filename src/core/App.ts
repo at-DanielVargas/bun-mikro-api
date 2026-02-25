@@ -6,6 +6,8 @@ import { MikroResponse } from './MikroResponse';
 import { ServiceException } from './errors';
 import { SwaggerGenerator, type SwaggerConfig } from '../swagger/SwaggerGenerator';
 import { SwaggerUI } from '../swagger/SwaggerUI';
+import { SwaggerAuth, type SwaggerUser } from '../swagger/SwaggerAuth';
+import { LibraryDocsPage } from '../docs/LibraryDocsPage';
 import type { GuardCtor } from './MetadataStore';
 
 export interface CORSOptions {
@@ -31,12 +33,16 @@ export interface SwaggerOptions {
   path?: string;
   /** OpenAPI JSON spec path (default: /docs/json) */
   jsonPath?: string;
+  /** HTML documentation guide path (default: /docs/guide) */
+  docsPath?: string;
   /** Controllers to exclude from the spec */
   excludeControllers?: Array<new () => unknown>;
   /** Controllers to document (default: all registered) */
   controllers?: Array<new () => unknown>;
   /** Guards that imply Bearer authentication */
   authGuards?: GuardCtor[];
+  /** Basic auth users for Swagger access */
+  users?: SwaggerUser[];
 }
 
 export class App<Env = {}> {
@@ -44,6 +50,7 @@ export class App<Env = {}> {
   private corsOptions: CORSOptions | null = null;
   private registeredControllers: Array<new () => unknown> = [];
   private swaggerUI: SwaggerUI | null = null;
+  private libraryDocs: { page: LibraryDocsPage; path: string; auth: SwaggerAuth } | null = null;
 
   /* ------------------------------------------------------------------ */
   /*  Controller registration                                             */
@@ -65,9 +72,18 @@ export class App<Env = {}> {
    * Enables auto-generated Swagger UI documentation.
    *
    * @example
-   * app.enableSwagger({ title: 'My API', version: '1.0.0' });
-   * // Serves: GET /docs  →  Swagger UI
+   * app.enableSwagger(
+   *   { title: 'My API', version: '1.0.0' },
+   *   { 
+   *     users: [
+   *       { username: 'admin', password: 'secret123' },
+   *       { username: 'dev', password: 'dev123' }
+   *     ]
+   *   }
+   * );
+   * // Serves: GET /docs       →  Swagger UI
    * //         GET /docs/json  →  OpenAPI 3.0 JSON
+   * //         GET /docs/guide →  HTML Documentation (ES/EN)
    */
   enableSwagger(config: SwaggerConfig = {}, options: SwaggerOptions = {}): this {
     const toDocument = options.controllers ?? this.registeredControllers;
@@ -78,12 +94,40 @@ export class App<Env = {}> {
 
     const spec = generator.generate(toDocument, exclude, config);
 
+    // Setup authentication
+    const auth = new SwaggerAuth(options.users ?? []);
+
     this.swaggerUI = new SwaggerUI(
       spec,
       options.path     ?? '/docs',
       options.jsonPath ?? '/docs/json',
+      auth,
+      options.docsPath ?? '/docs/guide',
     );
 
+    return this;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Library Documentation                                               */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Enables library documentation page with usage examples.
+   *
+   * @example
+   * app.enableLibraryDocs('/docs/library', [
+   *   { username: 'admin', password: 'admin123' }
+   * ]);
+   * // Serves: GET /docs/library  →  Library documentation (ES/EN)
+   */
+  enableLibraryDocs(path: string = '/docs/library', users: SwaggerUser[] = []): this {
+    const auth = new SwaggerAuth(users);
+    this.libraryDocs = {
+      page: new LibraryDocsPage(path),
+      path,
+      auth
+    };
     return this;
   }
 
@@ -122,11 +166,25 @@ export class App<Env = {}> {
       const url  = new URL(request.url);
       const path = url.pathname;
 
+      // Intercept library docs route
+      if (this.libraryDocs !== null && path === this.libraryDocs.path) {
+        if (!this.libraryDocs.auth.verify(request)) {
+          return this.libraryDocs.auth.unauthorizedResponse();
+        }
+        const lang = url.searchParams.get('lang') === 'es' ? 'es' : 'en';
+        const html = this.libraryDocs.page.generate(lang);
+        const response = new Response(html, {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
+        return this.corsOptions ? this.applyCORS(response, request) : response;
+      }
+
       // Intercept Swagger routes before normal dispatch
       if (this.swaggerUI !== null && this.swaggerUI.matches(path)) {
         return this.corsOptions
-          ? this.applyCORS(this.swaggerUI.handle(path), request)
-          : this.swaggerUI.handle(path);
+          ? this.applyCORS(this.swaggerUI.handle(path, request), request)
+          : this.swaggerUI.handle(path, request);
       }
 
       const mikro = await MikroRequest.fromRequest<Env>(request, env);
