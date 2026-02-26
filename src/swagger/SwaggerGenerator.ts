@@ -17,6 +17,7 @@ type OpenApiSpec = Record<string, unknown>;
 export class SwaggerGenerator {
   private readonly schemaBuilder = new DtoSchemaBuilder();
   private authGuards: GuardCtor[] = [];
+  private isLegacySpec: boolean = false;
 
   /**
    * Guards whose presence on a route signals Bearer authentication.
@@ -31,7 +32,9 @@ export class SwaggerGenerator {
     controllers: Array<new () => unknown>,
     excludeControllers: Array<new () => unknown>,
     config: SwaggerConfig,
+    isLegacy: boolean = false,
   ): OpenApiSpec {
+    this.isLegacySpec = isLegacy;
     const filtered = controllers.filter((c) => !excludeControllers.includes(c));
 
     const paths:   Record<string, Record<string, unknown>> = {};
@@ -62,7 +65,9 @@ export class SwaggerGenerator {
       Object.entries(paths).sort(([a], [b]) => a.localeCompare(b)),
     );
 
-    return this.buildSpec(sortedPaths, tags, schemas, config);
+    return isLegacy 
+      ? this.buildSwagger2Spec(sortedPaths, tags, schemas, config)
+      : this.buildSpec(sortedPaths, tags, schemas, config);
   }
 
   /* ------------------------------------------------------------------ */
@@ -158,14 +163,31 @@ export class SwaggerGenerator {
     // Request body
     if (DtoClass !== null) {
       const shortName = this.dtoShortName(DtoClass);
-      operation['requestBody'] = {
-        required: true,
-        content: {
-          'application/json': {
-            schema: { $ref: `#/components/schemas/${shortName}` },
+      const schemaRef = this.isLegacySpec 
+        ? `#/definitions/${shortName}`
+        : `#/components/schemas/${shortName}`;
+      
+      if (this.isLegacySpec) {
+        // Swagger 2.0 uses parameters array for body
+        const params = operation['parameters'] as Array<Record<string, unknown>> || [];
+        params.push({
+          name: 'body',
+          in: 'body',
+          required: true,
+          schema: { $ref: schemaRef },
+        });
+        operation['parameters'] = params;
+      } else {
+        // OpenAPI 3.0 uses requestBody
+        operation['requestBody'] = {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: schemaRef },
+            },
           },
-        },
-      };
+        };
+      }
     }
 
     operation['responses'] = this.buildResponses(apiDoc, DtoClass, guards);
@@ -248,6 +270,78 @@ export class SwaggerGenerator {
     }
 
     return spec;
+  }
+
+  private buildSwagger2Spec(
+    paths: Record<string, unknown>,
+    tags: Array<{ name: string; description?: string }>,
+    schemas: Record<string, unknown>,
+    config: SwaggerConfig,
+  ): OpenApiSpec {
+    const spec: OpenApiSpec = {
+      swagger: '2.0',
+      info: {
+        title:       config.title       ?? 'API',
+        version:     config.version     ?? '1.0.0',
+        description: config.description ?? '',
+      },
+      host: this.extractHost(config.servers),
+      basePath: this.extractBasePath(config.servers),
+      schemes: this.extractSchemes(config.servers),
+      tags,
+      paths,
+    };
+
+    if (Object.keys(schemas).length > 0) {
+      spec['definitions'] = schemas;
+    }
+
+    if (this.specHasAuth(paths as Record<string, Record<string, Record<string, unknown>>>)) {
+      spec['securityDefinitions'] = {
+        bearerAuth: {
+          type: 'apiKey',
+          name: 'Authorization',
+          in: 'header',
+          description: 'Bearer token authentication. Format: Bearer {token}',
+        },
+      };
+    }
+
+    return spec;
+  }
+
+  private extractHost(servers?: Array<{ url: string; description?: string }>): string {
+    if (!servers || servers.length === 0) return '';
+    const url = servers[0].url;
+    try {
+      const parsed = new URL(url);
+      return parsed.host;
+    } catch {
+      return '';
+    }
+  }
+
+  private extractBasePath(servers?: Array<{ url: string; description?: string }>): string {
+    if (!servers || servers.length === 0) return '/';
+    const url = servers[0].url;
+    try {
+      const parsed = new URL(url);
+      return parsed.pathname || '/';
+    } catch {
+      // If it's a relative path
+      return url.startsWith('/') ? url : '/';
+    }
+  }
+
+  private extractSchemes(servers?: Array<{ url: string; description?: string }>): string[] {
+    if (!servers || servers.length === 0) return ['http'];
+    const url = servers[0].url;
+    try {
+      const parsed = new URL(url);
+      return [parsed.protocol.replace(':', '')];
+    } catch {
+      return ['http'];
+    }
   }
 
   /* ------------------------------------------------------------------ */

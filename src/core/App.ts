@@ -43,6 +43,8 @@ export interface SwaggerOptions {
   authGuards?: GuardCtor[];
   /** Basic auth users for Swagger access */
   users?: SwaggerUser[];
+  /** Swagger UI version (default: 5.17.14) */
+  swaggerVersion?: string;
 }
 
 export class App<Env = {}> {
@@ -88,11 +90,14 @@ export class App<Env = {}> {
   enableSwagger(config: SwaggerConfig = {}, options: SwaggerOptions = {}): this {
     const toDocument = options.controllers ?? this.registeredControllers;
     const exclude    = options.excludeControllers ?? [];
+    const swaggerVersion = options.swaggerVersion ?? '5.17.14';
 
     const generator = new SwaggerGenerator();
     if (options.authGuards?.length) generator.setAuthGuards(options.authGuards);
 
-    const spec = generator.generate(toDocument, exclude, config);
+    // Detect if using legacy Swagger UI (< 3.0.0) to generate Swagger 2.0 spec
+    const isLegacy = parseInt(swaggerVersion.split('.')[0], 10) < 3;
+    const spec = generator.generate(toDocument, exclude, config, isLegacy);
 
     // Setup authentication
     const auth = new SwaggerAuth(options.users ?? []);
@@ -103,6 +108,7 @@ export class App<Env = {}> {
       options.jsonPath ?? '/docs/json',
       auth,
       options.docsPath ?? '/docs/guide',
+      swaggerVersion,
     );
 
     return this;

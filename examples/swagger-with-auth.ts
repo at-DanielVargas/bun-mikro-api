@@ -130,7 +130,11 @@ app.enableSwagger(
     // Rutas personalizadas (opcional)
     path: '/docs',
     jsonPath: '/docs/json',
-    docsPath: '/docs/guide'
+    docsPath: '/docs/guide',
+    
+    // Versión de Swagger UI (opcional, por defecto: 5.17.14)
+    // Puedes usar cualquier versión disponible en CDN
+    swaggerVersion: '5.17.14'  // Ejemplos: '5.17.14', '5.10.0', '4.18.3'
   }
 );
 

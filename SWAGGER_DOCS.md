@@ -102,7 +102,11 @@ app.enableSwagger(
     excludeControllers: [AdminController],
     
     // Guards que indican autenticación Bearer
-    authGuards: [AuthGuard]
+    authGuards: [AuthGuard],
+    
+    // Versión de Swagger UI (opcional, por defecto: 5.17.14)
+    // Puedes especificar cualquier versión disponible en CDN
+    swaggerVersion: '5.17.14'  // Ejemplos: '5.17.14', '5.10.0', '4.18.3'
   }
 );
 
@@ -230,6 +234,89 @@ export default app;
 ```
 
 ## Personalización
+
+### Versión de Swagger UI
+
+Puedes especificar qué versión de Swagger UI quieres usar. Por defecto se usa la versión `5.17.14`, pero puedes cambiarla a cualquier versión disponible en el CDN de Cloudflare.
+
+El sistema detecta automáticamente si estás usando una versión legacy (2.x) o moderna (3.x+) y carga los archivos y la inicialización correcta para cada una.
+
+```typescript
+const app = new App();
+
+app.enableSwagger(
+  {
+    title: 'Mi API',
+    version: '1.0.0'
+  },
+  {
+    // Usar una versión específica de Swagger UI
+    swaggerVersion: '5.17.14'  // Versión por defecto
+  }
+);
+```
+
+#### Versiones Disponibles
+
+Puedes usar cualquier versión de Swagger UI disponible en:
+- [CDN de Cloudflare](https://cdnjs.com/libraries/swagger-ui)
+- Versiones modernas (3.x - 5.x): `5.17.14`, `5.10.0`, `5.0.0`, `4.18.3`, `3.52.0`
+- Versiones legacy (2.x): `2.2.10`, `2.2.8`, `2.1.3`
+
+#### Soporte de Versiones Legacy (2.x)
+
+Las versiones 2.x de Swagger UI tienen una estructura diferente y usan `window.SwaggerUi` en lugar de `SwaggerUIBundle`. El sistema detecta automáticamente versiones legacy y carga:
+- jQuery 1.8.0 (dependencia base)
+- Underscore 1.8.3 (utilidades funcionales)
+- Backbone 1.1.2 (framework MVC - depende de jQuery y Underscore)
+- Handlebars 4.0.5 (motor de plantillas)
+- Marked 0.3.2 (renderizador de Markdown para descripciones)
+- `swagger-ui.min.js` (archivo principal)
+- `css/screen.css` en lugar de `swagger-ui.min.css`
+- Inicialización con `new SwaggerUi()` y `.load()` dentro de `$(function() {...})`
+
+```typescript
+app.enableSwagger(
+  {
+    title: 'API Legacy',
+    version: '1.0.0'
+  },
+  {
+    // Usar Swagger UI 2.x (detección automática de versión legacy)
+    swaggerVersion: '2.2.10'
+  }
+);
+```
+
+#### Ejemplo con Versión Antigua
+
+```typescript
+app.enableSwagger(
+  {
+    title: 'API Legacy',
+    version: '1.0.0'
+  },
+  {
+    // Usar Swagger UI 4.x para compatibilidad
+    swaggerVersion: '4.18.3'
+  }
+);
+```
+
+#### Ejemplo con Versión Específica
+
+```typescript
+app.enableSwagger(
+  {
+    title: 'API Moderna',
+    version: '2.0.0'
+  },
+  {
+    // Usar la última versión estable
+    swaggerVersion: '5.17.14'
+  }
+);
+```
 
 ### Usar SwaggerAuth Directamente
 

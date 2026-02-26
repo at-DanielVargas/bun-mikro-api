@@ -2,16 +2,27 @@
 
 Este directorio contiene ejemplos de cómo usar las nuevas funcionalidades de documentación Swagger con autenticación básica.
 
-## Ejemplo: swagger-with-auth.ts
+## Ejemplos Disponibles
 
-Este ejemplo muestra cómo configurar una API completa con:
+### 1. swagger-with-auth.ts
 
+Ejemplo completo con:
 - ✅ Controladores con decoradores
 - ✅ Validación de DTOs
 - ✅ Documentación Swagger
 - ✅ Autenticación básica para la documentación
 - ✅ Página de documentación HTML multiidioma
 - ✅ CORS habilitado
+- ✅ Versión moderna de Swagger UI (5.17.14)
+
+### 2. swagger-legacy-version.ts
+
+Ejemplo usando Swagger UI versión legacy (2.2.10):
+- ✅ Soporte para Swagger UI 2.x
+- ✅ Detección automática de versión legacy
+- ✅ Carga de archivos correctos (swagger-ui.min.js, lib/shred.bundle.js)
+- ✅ Inicialización legacy con `window.SwaggerUi`
+- ✅ Autenticación básica
 
 ## Cómo Ejecutar
 
@@ -142,6 +153,29 @@ La página de documentación de la API incluye:
 
 ## Personalización
 
+### Cambiar Versión de Swagger UI
+
+```typescript
+app.enableSwagger(
+  { title: 'Mi API', version: '1.0.0' },
+  {
+    // Versión moderna (por defecto)
+    swaggerVersion: '5.17.14'
+  }
+);
+
+// O usar versión legacy
+app.enableSwagger(
+  { title: 'Mi API', version: '1.0.0' },
+  {
+    // Versión legacy (detección automática)
+    swaggerVersion: '2.2.10'
+  }
+);
+```
+
+El sistema detecta automáticamente si la versión es legacy (< 3.0.0) y carga los archivos correctos.
+
 ### Cambiar Usuarios
 
 ```typescript
@@ -220,14 +254,15 @@ curl -X POST http://localhost:8787/users \
 
 ```
 examples/
-├── swagger-with-auth.ts    # Ejemplo completo
-└── README.md               # Esta documentación
+├── swagger-with-auth.ts       # Ejemplo completo con versión moderna
+├── swagger-legacy-version.ts  # Ejemplo con versión legacy (2.2.10)
+└── README.md                  # Esta documentación
 
 src/
 ├── swagger/
 │   ├── SwaggerAuth.ts      # Autenticación básica
 │   ├── DocsPage.ts         # Generador de página HTML
-│   ├── SwaggerUI.ts        # Servidor de Swagger UI
+│   ├── SwaggerUI.ts        # Servidor de Swagger UI (soporte legacy + moderno)
 │   └── SwaggerGenerator.ts # Generador de OpenAPI
 └── core/
     └── App.ts              # Aplicación principal
